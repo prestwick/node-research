@@ -1,15 +1,18 @@
 /*jslint nomen: true */
 /*jslint node: true */
+/*global */
 
 var handler,
     app = require('http').createServer(handler),
     io = require('socket.io').listen(app),
     fs = require('fs'),
     path = require('path'),
-    port = 1337;
+    port = 1337,
+    utilTimer;
 
 app.listen(port);
 
+//file server implementation
 function handler(req, res) {
     "use strict";
     var filePath = req.url,
@@ -23,8 +26,8 @@ function handler(req, res) {
         filePath = req.url;
     }
     
-    
     console.log('extention name is ' + extentionName);
+    
     
     switch (extentionName) {
     case '.js':
@@ -32,6 +35,9 @@ function handler(req, res) {
         break;
     case '.css':
         contentType = 'text/css';
+        break;
+    case '.png':
+        contentType = 'image/png';
         break;
     }
     console.log('content type is ' + contentType);
@@ -47,19 +53,41 @@ function handler(req, res) {
     });
 }
 
-console.log('node static running');
-
+//websocket implementation
 io.sockets.on('connection', function (socket) {
-//    socket.emit('news', {hello: 'my little friend.  I own the world'});
-//    socket.on('my other event', function (data) {
-//        console.log(data);
-//        console.log(__dirname);
     "use strict";
-    var count = 0,
-        counter = function () {
-            count += 1;
-            socket.emit('news', {dataCount: count});
+    var rate = 1000,
+        randEmit = function () {
+            var rand = Math.random() * 100;
+            socket.emit('news', {dataCount: rand});
         };
+    utilTimer.startTimer(randEmit, rate);
     
-    setInterval(counter, 250);
+    socket.on('my other event', function (data) {
+        console.log("received my other event");
+        //rate = data.rate;
+        utilTimer.stopTimer();
+        rate = data.rate;
+        utilTimer.startTimer(randEmit, rate);
+    });
 });
+
+//helper objects
+utilTimer = (function () {
+    "use strict";
+    var stopped = false,
+        internalTimerObject,
+        startTimer = function (callback, interval) {
+            stopped = false;
+            internalTimerObject = setInterval(callback, interval);
+            console.log("new interval is" + interval);
+        },
+        stopTimer = function () {
+            clearInterval(internalTimerObject);
+            console.log("clearInteval called");
+        };
+    return {
+        startTimer: startTimer,
+        stopTimer: stopTimer
+    };
+}());
